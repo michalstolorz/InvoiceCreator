@@ -81,6 +81,10 @@ namespace InvoiceCreator
         String customerPhoneNumber;
         String tax;
         String shippingCost;
+        String customerCityPostalCode;
+        String customerStreetNumber;
+        String customerNIP;
+        String customerREGON;
 
         #endregion Variables
 
@@ -109,6 +113,26 @@ namespace InvoiceCreator
         private void TextBox_ShippingCost(object sender, TextChangedEventArgs e)
         {
             shippingCost = shippingCostTextBox.Text.ToString();
+        }
+
+        private void TextBox_CustomerCityPostalCode(object sender, TextChangedEventArgs e)
+        {
+            customerCityPostalCode = customerCityPostalCodeTextBox.Text.ToString();
+        }
+
+        private void TextBox_CustomerStreetNumber(object sender, TextChangedEventArgs e)
+        {
+            customerStreetNumber = customerStreetNumberTextBox.Text.ToString();
+        }
+
+        private void TextBox_NIP(object sender, TextChangedEventArgs e)
+        {
+            customerNIP = customerNIPTextBox.Text.ToString();
+        }
+
+        private void TextBox_REGON(object sender, TextChangedEventArgs e)
+        {
+            customerREGON = customerREGONTextBox.Text.ToString();
         }
 
         private void TextBox_productName1(object sender, TextChangedEventArgs e)
@@ -317,7 +341,7 @@ namespace InvoiceCreator
         public MainWindow()
         {
             InitializeComponent();
-            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(/*Your Syncfusion activation key*/);
+            Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("NTY2NTA0QDMxMzkyZTM0MmUzMEN3RjVDcEVYSkRkWm8vN2xucXFFWHhML3lSc29yZk5zL2tPRkVoMW5WOGM9");
         }
 
         #region StringList
@@ -431,101 +455,120 @@ namespace InvoiceCreator
 
         private void Button_CreateInvoiceClick(object sender, RoutedEventArgs e)
         {
-            List<string> productNamesList = CreateProductNamesList();
-            List<string> quantitiesList = CreateQuantitiesList();
-            List<string> pricesList = CreatePricesList();
-
-            List<string> parsedProductNamesList = ParseProductNamesList(productNamesList);
-            List<decimal> decimalQuantitiesList = ParseQuantitiesListToDecimal(quantitiesList);
-            List<decimal> decimalPricesList = ParsePriceListToDecimal(pricesList);
-
-            //Create PDF with PDF/A-3b conformance.
-            //PdfDocument document = new PdfDocument(PdfConformanceLevel.Pdf_A3B);
-            //Set ZUGFeRD profile.
-            //document.ZugferdConformanceLevel = ZugferdConformanceLevel.Basic;
-            PdfDocument document = new PdfDocument();
-            //Create border color.
-            PdfColor borderColor = new PdfColor(Color.FromArgb(255, 142, 170, 219));
-            PdfBrush lightBlueBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 91, 126, 215)));
-
-            PdfBrush darkBlueBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 65, 104, 209)));
-
-            PdfBrush whiteBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 255, 255, 255)));
-            PdfPen borderPen = new PdfPen(borderColor, 1f);
-
-            string currentDirectory = Directory.GetCurrentDirectory();
-            string path = System.IO.Path.Combine(currentDirectory, "arial.ttf");
-            Stream fontStream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
-
-            //Create TrueType font.
-            PdfTrueTypeFont headerFont = new PdfTrueTypeFont(fontStream, 30, PdfFontStyle.Regular);
-            PdfTrueTypeFont arialRegularFont = new PdfTrueTypeFont(fontStream, 9, PdfFontStyle.Regular);
-            PdfTrueTypeFont arialBoldFont = new PdfTrueTypeFont(fontStream, 11, PdfFontStyle.Regular);
-
-            const float margin = 30;
-            const float lineSpace = 7;
-            const float headerHeight = 90;
-
-            //Add page to the PDF.
-            PdfPage page = document.Pages.Add();
-
-            PdfGraphics graphics = page.Graphics;
-
-            //Get the page width and height.
-            float pageWidth = page.GetClientSize().Width; 
-            float pageHeight = page.GetClientSize().Height; 
-            //Draw page border
-            graphics.DrawRectangle(borderPen, new RectangleF(0, 0, pageWidth, pageHeight));
-
-            //Fill the header with light Brush.
-            graphics.DrawRectangle(lightBlueBrush, new RectangleF(0, 0, pageWidth, headerHeight));
-
-            RectangleF headerAmountBounds = new RectangleF(400, 0, pageWidth - 400, headerHeight);
-
-            graphics.DrawString("FAKTURA", headerFont, whiteBrush, new PointF(margin, headerAmountBounds.Height / 3));
-
-            graphics.DrawRectangle(darkBlueBrush, headerAmountBounds);
-
-            graphics.DrawString("Kwota", arialRegularFont, whiteBrush, headerAmountBounds, new PdfStringFormat(PdfTextAlignment.Center, PdfVerticalAlignment.Middle));
-
-            PdfTextElement textElement = new PdfTextElement("", arialRegularFont);
-
-            PdfLayoutResult layoutResult = textElement.Draw(page, new PointF(headerAmountBounds.X - (margin + 40), 120));
-
-            textElement.Text = "Data wystawienia: " + DateTime.Now.ToString("dddd dd, MMMM yyyy") + "\n" + "Data sprzedaży: " + DateTime.Now.ToString("dddd dd, MMMM yyyy");
-            textElement.Draw(page, new PointF(layoutResult.Bounds.X - 40, layoutResult.Bounds.Bottom + lineSpace));
-
-            textElement.Text = "Nabywca:";
-            layoutResult = textElement.Draw(page, new PointF(margin, 120));
-
-            textElement.Text = customerName;
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
-            textElement.Text = customerEmail;
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
-            textElement.Text = customerPhoneNumber;
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
-
-            PdfGrid grid = new PdfGrid();
-            DataTable dataTable = new DataTable();
-
-            dataTable.Columns.Add("Lp.");
-            dataTable.Columns.Add("Nazwa produktu");
-            dataTable.Columns.Add("Ilość");
-            dataTable.Columns.Add("Cena brutto");
-            dataTable.Columns.Add("Stawka VAT");
-            dataTable.Columns.Add("Wartość netto");
-            dataTable.Columns.Add("Kwota VAT");
-            dataTable.Columns.Add("Wartość brutto");
-
-            decimal TaxNetValue = (100 - Decimal.Parse(tax)) / 100;
-            decimal VATValue = Decimal.Parse(tax)/100;
-            const string PLN = " PLN";
-            decimal totalAmount = 0;
-            int i;
-
-            for (i = 0; i < parsedProductNamesList.Count(); i++)
+            try
             {
-                dataTable.Rows.Add(new object[] { i + 1,
+                List<string> productNamesList = CreateProductNamesList();
+                List<string> quantitiesList = CreateQuantitiesList();
+                List<string> pricesList = CreatePricesList();
+
+                List<string> parsedProductNamesList = ParseProductNamesList(productNamesList);
+                List<decimal> decimalQuantitiesList = ParseQuantitiesListToDecimal(quantitiesList);
+                List<decimal> decimalPricesList = ParsePriceListToDecimal(pricesList);
+
+                PdfDocument document = new PdfDocument();
+                //Create border color.
+                PdfColor borderColor = new PdfColor(Color.FromArgb(255, 142, 170, 219));
+                PdfBrush lightBlueBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 91, 126, 215)));
+
+                PdfBrush darkBlueBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 65, 104, 209)));
+
+                PdfBrush whiteBrush = new PdfSolidBrush(new PdfColor(Color.FromArgb(255, 255, 255, 255)));
+                PdfPen borderPen = new PdfPen(borderColor, 1f);
+
+                string currentDirectory = Directory.GetCurrentDirectory();
+                string path = System.IO.Path.Combine(currentDirectory, "arial.ttf");
+                Stream fontStream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
+
+                //Create TrueType font.
+                PdfTrueTypeFont headerFont = new PdfTrueTypeFont(fontStream, 30, PdfFontStyle.Regular);
+                PdfTrueTypeFont arialRegularFont = new PdfTrueTypeFont(fontStream, 9, PdfFontStyle.Regular);
+                PdfTrueTypeFont arialBoldFont = new PdfTrueTypeFont(fontStream, 11, PdfFontStyle.Regular);
+
+                const float margin = 30;
+                const float lineSpace = 7;
+                const float headerHeight = 90;
+
+                //Add page to the PDF.
+                PdfPage page = document.Pages.Add();
+
+                PdfGraphics graphics = page.Graphics;
+
+                //Get the page width and height.
+                float pageWidth = page.GetClientSize().Width;
+                float pageHeight = page.GetClientSize().Height;
+                //Draw page border
+                graphics.DrawRectangle(borderPen, new RectangleF(0, 0, pageWidth, pageHeight));
+
+                //Fill the header with light Brush.
+                graphics.DrawRectangle(lightBlueBrush, new RectangleF(0, 0, pageWidth, headerHeight));
+
+                RectangleF headerAmountBounds = new RectangleF(400, 0, pageWidth - 400, headerHeight);
+
+                graphics.DrawString("FAKTURA", headerFont, whiteBrush, new PointF(margin, headerAmountBounds.Height / 3));
+
+                graphics.DrawRectangle(darkBlueBrush, headerAmountBounds);
+
+                graphics.DrawString("Kwota", arialRegularFont, whiteBrush, headerAmountBounds, new PdfStringFormat(PdfTextAlignment.Center, PdfVerticalAlignment.Middle));
+
+                PdfTextElement textElement = new PdfTextElement("", arialRegularFont);
+
+                PdfLayoutResult layoutResult = textElement.Draw(page, new PointF(headerAmountBounds.X - (margin + 40), 120));
+
+                textElement.Text = "Data wystawienia: " + DateTime.Now.ToString("dddd dd, MMMM yyyy") + "\n" + "Data sprzedaży: " + DateTime.Now.ToString("dddd dd, MMMM yyyy");
+                textElement.Draw(page, new PointF(layoutResult.Bounds.X - 30, layoutResult.Bounds.Bottom + lineSpace));
+
+                textElement.Text = "Dane wysyłki:";
+                layoutResult = textElement.Draw(page, new PointF(margin + 130, 120));
+
+                textElement.Text = customerCityPostalCode;
+                layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+
+                textElement.Text = customerStreetNumber;
+                layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+
+                if (!String.IsNullOrEmpty(customerNIP))
+                {
+                    textElement.Text = "NIP: " + customerNIP;
+                    layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+                }
+
+                if (!String.IsNullOrEmpty(customerREGON))
+                {
+                    textElement.Text = "REGON: " + customerREGON;
+                    layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+                }
+
+                textElement.Text = "Nabywca:";
+                layoutResult = textElement.Draw(page, new PointF(margin, 120));
+
+                textElement.Text = customerName;
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
+                textElement.Text = customerEmail;
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
+                textElement.Text = customerPhoneNumber;
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
+
+                PdfGrid grid = new PdfGrid();
+                DataTable dataTable = new DataTable();
+
+                dataTable.Columns.Add("Lp.");
+                dataTable.Columns.Add("Nazwa produktu");
+                dataTable.Columns.Add("Ilość");
+                dataTable.Columns.Add("Cena brutto");
+                dataTable.Columns.Add("Stawka VAT");
+                dataTable.Columns.Add("Wartość netto");
+                dataTable.Columns.Add("Kwota VAT");
+                dataTable.Columns.Add("Wartość brutto");
+
+                decimal TaxNetValue = (100 - Decimal.Parse(tax)) / 100;
+                decimal VATValue = Decimal.Parse(tax) / 100;
+                const string PLN = " PLN";
+                decimal totalAmount = 0;
+                int i;
+
+                for (i = 0; i < parsedProductNamesList.Count(); i++)
+                {
+                    dataTable.Rows.Add(new object[] { i + 1,
                                                   parsedProductNamesList[i],
                                                   quantitiesList[i] + " szt",
                                                   pricesList[i] + PLN,
@@ -534,11 +577,24 @@ namespace InvoiceCreator
                                                   Math.Round(decimalPricesList[i] * VATValue * decimalQuantitiesList[i], 2).ToString() + PLN,
                                                   Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2).ToString() + PLN });
 
-                totalAmount += Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2);
-            }
+                    totalAmount += Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2);
+                }
 
+                if (shippingCost == "0")
+                {
+                    dataTable.Rows.Add(new object[] { i + 1,
+                                                  "Koszty wysyłki",
+                                                  "1 szt",
+                                                  shippingCost + PLN,
+                                                  tax + "%",
+                                                  shippingCost + PLN,
+                                                  shippingCost + PLN,
+                                                  shippingCost + PLN });
 
-            dataTable.Rows.Add(new object[] { i + 1,
+                }
+                else
+                {
+                    dataTable.Rows.Add(new object[] { i + 1,
                                                   "Koszty wysyłki",
                                                   "1 szt",
                                                   shippingCost + PLN,
@@ -546,75 +602,83 @@ namespace InvoiceCreator
                                                   Math.Round(Decimal.Parse(shippingCost) * TaxNetValue, 2).ToString() + PLN,
                                                   Math.Round(Decimal.Parse(shippingCost) * VATValue, 2).ToString() + PLN,
                                                   shippingCost + PLN });
+                }
 
+                grid.DataSource = dataTable;
 
-            grid.DataSource = dataTable;
+                grid.Columns[0].Width = 30;
+                grid.Columns[1].Width = 120;
+                grid.Columns[2].Width = 40;
+                grid.Columns[3].Width = 70;
+                grid.Columns[4].Width = 40;
+                grid.Columns[5].Width = 80;
+                grid.Columns[6].Width = 70;
+                grid.Columns[7].Width = 65;
 
-            grid.Columns[0].Width = 30;
-            grid.Columns[1].Width = 120;
-            grid.Columns[2].Width = 40;
-            grid.Columns[3].Width = 70;
-            grid.Columns[4].Width = 40;
-            grid.Columns[5].Width = 80;
-            grid.Columns[6].Width = 70;
-            grid.Columns[7].Width = 65;
+                grid.Style.Font = arialRegularFont;
+                grid.Style.CellPadding.All = 5;
 
-            grid.Style.Font = arialRegularFont;
-            grid.Style.CellPadding.All = 5;
+                grid.ApplyBuiltinStyle(PdfGridBuiltinStyle.ListTable4Accent5);
 
-            grid.ApplyBuiltinStyle(PdfGridBuiltinStyle.ListTable4Accent5);
+                layoutResult = grid.Draw(page, new PointF(0, layoutResult.Bounds.Bottom + 40));
 
-            layoutResult = grid.Draw(page, new PointF(0, layoutResult.Bounds.Bottom + 40));
+                textElement.Text = "Suma: ";
+                textElement.Font = arialBoldFont;
+                layoutResult = textElement.Draw(page, new PointF(headerAmountBounds.X - 40, layoutResult.Bounds.Bottom + lineSpace));
 
-            textElement.Text = "Suma: ";
-            textElement.Font = arialBoldFont;
-            layoutResult = textElement.Draw(page, new PointF(headerAmountBounds.X - 40, layoutResult.Bounds.Bottom + lineSpace));
+                totalAmount += Decimal.Parse(shippingCost);
 
-            totalAmount += Decimal.Parse(shippingCost);
+                textElement.Text = totalAmount.ToString() + " PLN";
+                layoutResult = textElement.Draw(page, new PointF(layoutResult.Bounds.Right + 4, layoutResult.Bounds.Y));
 
-            textElement.Text = totalAmount.ToString() + " PLN";
-            layoutResult = textElement.Draw(page, new PointF(layoutResult.Bounds.Right + 4, layoutResult.Bounds.Y));
+                graphics.DrawString(totalAmount.ToString() + " PLN", arialBoldFont, whiteBrush, new RectangleF(400, lineSpace, pageWidth - 400, headerHeight + 15), new PdfStringFormat(PdfTextAlignment.Center, PdfVerticalAlignment.Middle));
 
-            graphics.DrawString(totalAmount.ToString() + " PLN", arialBoldFont, whiteBrush, new RectangleF(400, lineSpace, pageWidth - 400, headerHeight + 15), new PdfStringFormat(PdfTextAlignment.Center, PdfVerticalAlignment.Middle));
+                borderPen.DashStyle = PdfDashStyle.Custom;
+                borderPen.DashPattern = new float[] { 3, 3 };
 
-            borderPen.DashStyle = PdfDashStyle.Custom;
-            borderPen.DashPattern = new float[] { 3, 3 };
+                path = System.IO.Path.Combine(currentDirectory, "KonfiguracjaDanych.txt");
+                string[] ownerData = System.IO.File.ReadAllLines(path);
 
-            path = System.IO.Path.Combine(currentDirectory, "KonfiguracjaDanych.txt");
-            string[] ownerData = System.IO.File.ReadAllLines(path);
+                PdfLine line = new PdfLine(borderPen, new PointF(0, 0), new PointF(pageWidth, 0));
+                layoutResult = line.Draw(page, new PointF(0, pageHeight - 110));
 
-            PdfLine line = new PdfLine(borderPen, new PointF(0, 0), new PointF(pageWidth, 0));
-            layoutResult = line.Draw(page, new PointF(0, pageHeight - 100));
+                FileStream imageFileStream = new FileStream(currentDirectory + @"\logo.jpg", FileMode.Open);
+                PdfBitmap image = new PdfBitmap(imageFileStream);
 
-            FileStream imageFileStream = new FileStream(currentDirectory + @"\logo.jpg", FileMode.Open);
-            PdfBitmap image = new PdfBitmap(imageFileStream);
+                textElement.Text = ownerData[0];
+                textElement.Font = arialRegularFont;
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + (lineSpace * 2)));
+                textElement.Text = ownerData[1] + "\n" +
+                    ownerData[2] + "\n" +
+                    ownerData[3] + "\n" +
+                    ownerData[4];
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
+                textElement.Text = "Pytania? Email: " + ownerData[5] + "\nTel: " + ownerData[6] + "; " + ownerData[7];
+                layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
 
-            textElement.Text = ownerData[0];
-            textElement.Font = arialRegularFont;
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + (lineSpace * 2)));
-            textElement.Text = ownerData[1] + "\n" +
-                ownerData[2] + "\n" +
-                ownerData[3] + "\n" +
-                ownerData[4];
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
-            textElement.Text = "Pytania? Email: " + ownerData[5] + " Tel: " + ownerData[6] + "; " + ownerData[7];
-            layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
+                path = System.IO.Path.Combine(currentDirectory, "NumerFaktury.txt");
+                var invoiceNumber = System.IO.File.ReadAllLines(path)[0];
 
-            path = System.IO.Path.Combine(currentDirectory, "NumerFaktury.txt");
-            var invoiceNumber = System.IO.File.ReadAllLines(path)[0];
+                graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 39, layoutResult.Bounds.Bottom - 92));
 
-            graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 8, layoutResult.Bounds.Bottom - 65));
+                var fileName = "Faktura " + customerName + invoiceNumber + ".pdf";
+                FileStream fileStream = new FileStream(currentDirectory + @"\Faktury\" + fileName, FileMode.CreateNew, FileAccess.ReadWrite);
+                document.Save(fileStream);
+                document.Close(true);
 
-            var fileName = "Faktura " + customerName + invoiceNumber + ".pdf";
-            FileStream fileStream = new FileStream(currentDirectory + @"\Faktury\" + fileName, FileMode.CreateNew, FileAccess.ReadWrite);
-            document.Save(fileStream);
-            document.Close(true);
-            fileStream.Close();
+                fileStream.Close();
+                fontStream.Close();
+                imageFileStream.Close();
 
-            string newInvoiceNumber = (int.Parse(invoiceNumber) + 1).ToString();
-            File.WriteAllText(path, newInvoiceNumber);
+                string newInvoiceNumber = (int.Parse(invoiceNumber) + 1).ToString();
+                File.WriteAllText(path, newInvoiceNumber);
 
-            MessageBox.Show("Faktura wygenerowana");
+                MessageBox.Show("Faktura wygenerowana");
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Błędne dane/Brak danych.");
+            }
         }
     }
 }
