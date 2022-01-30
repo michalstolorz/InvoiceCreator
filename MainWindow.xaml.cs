@@ -27,6 +27,7 @@ namespace InvoiceCreator
     public partial class MainWindow : Window
     {
         #region Variables
+        bool isCompany = false;
 
         String productName1;
         String quantity1;
@@ -89,6 +90,15 @@ namespace InvoiceCreator
         #endregion Variables
 
         #region Property
+
+        private void CheckBox_FirmaCheck(object sender, RoutedEventArgs e)
+        {
+            isCompany = true;
+        }
+        private void CheckBox_FirmaUncheck(object sender, RoutedEventArgs e)
+        {
+            isCompany = false;
+        }
 
         private void TextBox_CustomerName(object sender, TextChangedEventArgs e)
         {
@@ -504,7 +514,20 @@ namespace InvoiceCreator
 
                 RectangleF headerAmountBounds = new RectangleF(400, 0, pageWidth - 400, headerHeight);
 
-                graphics.DrawString("FAKTURA", headerFont, whiteBrush, new PointF(margin, headerAmountBounds.Height / 3));
+                if (isCompany)
+                {
+                    path = System.IO.Path.Combine(currentDirectory, "NumerFakturyFirma.txt");
+                    var invoiceNumberCompany = System.IO.File.ReadAllLines(path)[0];
+
+                    graphics.DrawString("FAKTURA " + invoiceNumberCompany + "/" + DateTime.Now.Year, headerFont, whiteBrush, new PointF(margin, headerAmountBounds.Height / 3));
+
+                    string newInvoiceCompanyNumber = (int.Parse(invoiceNumberCompany) + 1).ToString();
+                    File.WriteAllText(path, newInvoiceCompanyNumber);
+                }
+                else
+                {
+                    graphics.DrawString("FAKTURA ", headerFont, whiteBrush, new PointF(margin, headerAmountBounds.Height / 3));
+                }
 
                 graphics.DrawRectangle(darkBlueBrush, headerAmountBounds);
 
@@ -526,16 +549,19 @@ namespace InvoiceCreator
                 textElement.Text = customerStreetNumber;
                 layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
 
-                if (!String.IsNullOrEmpty(customerNIP))
+                if (isCompany)
                 {
-                    textElement.Text = "NIP: " + customerNIP;
-                    layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
-                }
+                    if (!String.IsNullOrEmpty(customerNIP))
+                    {
+                        textElement.Text = "NIP: " + customerNIP;
+                        layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+                    }
 
-                if (!String.IsNullOrEmpty(customerREGON))
-                {
-                    textElement.Text = "REGON: " + customerREGON;
-                    layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+                    if (!String.IsNullOrEmpty(customerREGON))
+                    {
+                        textElement.Text = "REGON: " + customerREGON;
+                        layoutResult = textElement.Draw(page, new PointF(margin + 130, layoutResult.Bounds.Bottom + lineSpace));
+                    }
                 }
 
                 textElement.Text = "Nabywca:";
@@ -554,6 +580,10 @@ namespace InvoiceCreator
                 dataTable.Columns.Add("Lp.");
                 dataTable.Columns.Add("Nazwa produktu");
                 dataTable.Columns.Add("Ilość");
+                if (isCompany)
+                {
+                    dataTable.Columns.Add("Cena netto");
+                }
                 dataTable.Columns.Add("Cena brutto");
                 dataTable.Columns.Add("Stawka VAT");
                 dataTable.Columns.Add("Wartość netto");
@@ -568,7 +598,22 @@ namespace InvoiceCreator
 
                 for (i = 0; i < parsedProductNamesList.Count(); i++)
                 {
-                    dataTable.Rows.Add(new object[] { i + 1,
+                    if (isCompany)
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
+                                                  parsedProductNamesList[i],
+                                                  quantitiesList[i] + " szt",
+                                                  Math.Round(decimalPricesList[i] * TaxNetValue, 2).ToString() + PLN,
+                                                  pricesList[i] + PLN,
+                                                  tax + "%",
+                                                  Math.Round(decimalPricesList[i] * TaxNetValue * decimalQuantitiesList[i], 2).ToString() + PLN,
+                                                  Math.Round(decimalPricesList[i] * VATValue * decimalQuantitiesList[i], 2).ToString() + PLN,
+                                                  Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2).ToString() + PLN });
+
+                    }
+                    else
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
                                                   parsedProductNamesList[i],
                                                   quantitiesList[i] + " szt",
                                                   pricesList[i] + PLN,
@@ -576,13 +621,46 @@ namespace InvoiceCreator
                                                   Math.Round(decimalPricesList[i] * TaxNetValue * decimalQuantitiesList[i], 2).ToString() + PLN,
                                                   Math.Round(decimalPricesList[i] * VATValue * decimalQuantitiesList[i], 2).ToString() + PLN,
                                                   Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2).ToString() + PLN });
+                    }
+
 
                     totalAmount += Math.Round(decimalPricesList[i] * decimalQuantitiesList[i], 2);
                 }
+                #region ShippingCost
 
-                if (shippingCost == "0")
+                if (isCompany)
                 {
-                    dataTable.Rows.Add(new object[] { i + 1,
+                    if (shippingCost == "0")
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
+                                                  "Koszty wysyłki",
+                                                  "1 szt",
+                                                  shippingCost + PLN,
+                                                  shippingCost + PLN,
+                                                  tax + "%",
+                                                  shippingCost + PLN,
+                                                  shippingCost + PLN,
+                                                  shippingCost + PLN });
+
+                    }
+                    else
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
+                                                  "Koszty wysyłki",
+                                                  "1 szt",
+                                                  Math.Round(Decimal.Parse(shippingCost) * TaxNetValue, 2).ToString() + PLN,
+                                                  shippingCost + PLN,
+                                                  tax + "%",
+                                                  Math.Round(Decimal.Parse(shippingCost) * TaxNetValue, 2).ToString() + PLN,
+                                                  Math.Round(Decimal.Parse(shippingCost) * VATValue, 2).ToString() + PLN,
+                                                  shippingCost + PLN });
+                    }
+                }
+                else
+                {
+                    if (shippingCost == "0")
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
                                                   "Koszty wysyłki",
                                                   "1 szt",
                                                   shippingCost + PLN,
@@ -591,10 +669,10 @@ namespace InvoiceCreator
                                                   shippingCost + PLN,
                                                   shippingCost + PLN });
 
-                }
-                else
-                {
-                    dataTable.Rows.Add(new object[] { i + 1,
+                    }
+                    else
+                    {
+                        dataTable.Rows.Add(new object[] { i + 1,
                                                   "Koszty wysyłki",
                                                   "1 szt",
                                                   shippingCost + PLN,
@@ -602,18 +680,35 @@ namespace InvoiceCreator
                                                   Math.Round(Decimal.Parse(shippingCost) * TaxNetValue, 2).ToString() + PLN,
                                                   Math.Round(Decimal.Parse(shippingCost) * VATValue, 2).ToString() + PLN,
                                                   shippingCost + PLN });
+                    }
                 }
+                #endregion ShippingCost
 
                 grid.DataSource = dataTable;
-
-                grid.Columns[0].Width = 30;
-                grid.Columns[1].Width = 120;
-                grid.Columns[2].Width = 40;
-                grid.Columns[3].Width = 70;
-                grid.Columns[4].Width = 40;
-                grid.Columns[5].Width = 80;
-                grid.Columns[6].Width = 70;
-                grid.Columns[7].Width = 65;
+                //515
+                if (isCompany)
+                {
+                    grid.Columns[0].Width = 30;
+                    grid.Columns[1].Width = 90;
+                    grid.Columns[2].Width = 40;
+                    grid.Columns[3].Width = 60;
+                    grid.Columns[4].Width = 60;
+                    grid.Columns[5].Width = 40;
+                    grid.Columns[6].Width = 70;
+                    grid.Columns[7].Width = 60;
+                    grid.Columns[8].Width = 65;
+                }
+                else
+                {
+                    grid.Columns[0].Width = 30;
+                    grid.Columns[1].Width = 120;
+                    grid.Columns[2].Width = 40;
+                    grid.Columns[3].Width = 70;
+                    grid.Columns[4].Width = 40;
+                    grid.Columns[5].Width = 80;
+                    grid.Columns[6].Width = 70;
+                    grid.Columns[7].Width = 65;
+                }
 
                 grid.Style.Font = arialRegularFont;
                 grid.Style.CellPadding.All = 5;
@@ -656,22 +751,22 @@ namespace InvoiceCreator
                 textElement.Text = "Pytania? Email: " + ownerData[5] + "\nTel: " + ownerData[6] + "; " + ownerData[7];
                 layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
 
+                graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 39, layoutResult.Bounds.Bottom - 92));
+
                 path = System.IO.Path.Combine(currentDirectory, "NumerFaktury.txt");
                 var invoiceNumber = System.IO.File.ReadAllLines(path)[0];
-
-                graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 39, layoutResult.Bounds.Bottom - 92));
 
                 var fileName = "Faktura " + customerName + invoiceNumber + ".pdf";
                 FileStream fileStream = new FileStream(currentDirectory + @"\Faktury\" + fileName, FileMode.CreateNew, FileAccess.ReadWrite);
                 document.Save(fileStream);
                 document.Close(true);
 
+                string newInvoiceNumber = (int.Parse(invoiceNumber) + 1).ToString();
+                File.WriteAllText(path, newInvoiceNumber);
+
                 fileStream.Close();
                 fontStream.Close();
                 imageFileStream.Close();
-
-                string newInvoiceNumber = (int.Parse(invoiceNumber) + 1).ToString();
-                File.WriteAllText(path, newInvoiceNumber);
 
                 MessageBox.Show("Faktura wygenerowana");
             }
