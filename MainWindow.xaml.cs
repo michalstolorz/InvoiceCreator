@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -463,10 +464,201 @@ namespace InvoiceCreator
 
         #endregion
 
+        #region ChceckFilesExists
+        private string ChceckFilesExists()
+        {
+            string currentDirectory = Directory.GetCurrentDirectory();
+            string arialPath = System.IO.Path.Combine(currentDirectory, "arial.ttf");
+            string numerFakturyPath = System.IO.Path.Combine(currentDirectory, "NumerFaktury.txt");
+            string konfiguracjaDanychPath = System.IO.Path.Combine(currentDirectory, "KonfiguracjaDanych.txt");
+            string numerFakturyFirmaPath = System.IO.Path.Combine(currentDirectory, "NumerFakturyFirma.txt");
+            string errorList = "";
+
+            try
+            {
+                Stream fontStream = new FileStream(arialPath, FileMode.Open, FileAccess.ReadWrite);
+                fontStream.Close();
+            }
+            catch
+            {
+                errorList += "Brak pliku arial.tff\n";
+            }
+
+            try
+            {
+                var invoiceNumber = System.IO.File.ReadAllLines(numerFakturyPath);
+            }
+            catch
+            {
+                errorList += "Brak pliku NumerFaktury.txt\n";
+            }
+
+            try
+            {
+                var dataConfiguration = System.IO.File.ReadAllLines(konfiguracjaDanychPath);
+            }
+            catch
+            {
+                errorList += "Brak pliku KonfiguracjaDanych.txt\n";
+            }
+
+            try
+            {
+                var invoiceNumberCompany = System.IO.File.ReadAllLines(numerFakturyFirmaPath);
+            }
+            catch
+            {
+                errorList += "Brak pliku NumerFakturyFirma.txt\n";
+            }
+
+            try
+            {
+                FileStream imageFileStream = new FileStream(currentDirectory + @"\logo.jpg", FileMode.Open);
+                imageFileStream.Close();
+            }
+            catch
+            {
+                errorList += "Brak pliku logo.jpg\n";
+            }
+
+            return errorList;
+        }
+        #endregion ChceckFilesExists
+
+        private bool CheckKonfiguracjaDanychFile()
+        {
+            string currentDirectory = Directory.GetCurrentDirectory();
+            string konfiguracjaDanychPath = System.IO.Path.Combine(currentDirectory, "KonfiguracjaDanych.txt");
+
+            var dataConfiguration = System.IO.File.ReadAllLines(konfiguracjaDanychPath);
+
+            if (dataConfiguration.Length == 8)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        #region CheckFields
+        private string CheckFields()
+        {
+            string errorList = "";
+            Regex regex = new Regex(@"^[0-9]+$");
+
+            if (String.IsNullOrWhiteSpace(customerName))
+            {
+                errorList += "Brak imienia i nazwiska klienta\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(customerEmail))
+            {
+                errorList += "Brak e-maila klienta\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(customerPhoneNumber))
+            {
+                errorList += "Brak numeru telefonu klienta\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(customerCityPostalCode))
+            {
+                errorList += "Brak miasta i kodu pocztowego\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(customerStreetNumber))
+            {
+                errorList += "Brak ulicy i nr domu/lokalu\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(shippingCost))
+            {
+                errorList += "Brak kosztów wysyłki\n";
+            }
+            else if (!regex.IsMatch(shippingCost))
+            {
+                errorList += "Koszty wysyłki musi być liczbą\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(tax))
+            {
+                errorList += "Brak wartości VAT\n";
+            }
+            else if (!regex.IsMatch(tax))
+            {
+                errorList += "Wartość VAT musi być liczbą\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(productName1))
+            {
+                errorList += "Brak nazwy pierwszego produktu\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(quantity1))
+            {
+                errorList += "Brak ilości dla pierwszego produktu\n";
+            }
+            else if(!regex.IsMatch(quantity1))
+            {
+                errorList += "Ilość musi być liczbą\n";
+            }
+
+            if (String.IsNullOrWhiteSpace(price1))
+            {
+                errorList += "Brak ceny dla pierwszego produktu\n";
+            }
+            else if(!regex.IsMatch(price1))
+            {
+                errorList += "Cena musi byc liczbą\n";
+            }
+
+            if (isCompany)
+            {
+                if(String.IsNullOrWhiteSpace(customerNIP))
+                {
+                    errorList += "Brak numeru NIP\n";
+                }
+                else if (!regex.IsMatch(customerNIP))
+                {
+                    errorList += "NIP musi się składać z cyfr\n";
+                }
+            }
+
+            return errorList;
+        }
+        #endregion CheckFields
+
         private void Button_CreateInvoiceClick(object sender, RoutedEventArgs e)
         {
             try
             {
+                var errorList = ChceckFilesExists();
+
+                if (!String.IsNullOrEmpty(errorList))
+                {
+                    MessageBox.Show(errorList);
+
+                    return;
+                }
+
+                if(!CheckKonfiguracjaDanychFile())
+                {
+                    MessageBox.Show("Plik KonfiguracjaDanych.txt nie zawiera dokładnie 8 linijek tekstu.");
+
+                    return;
+                }
+
+                var errorFieldList = CheckFields();
+
+                if (!String.IsNullOrEmpty(errorFieldList))
+                {
+                    MessageBox.Show(errorFieldList);
+
+                    return;
+                }
+
                 List<string> productNamesList = CreateProductNamesList();
                 List<string> quantitiesList = CreateQuantitiesList();
                 List<string> pricesList = CreatePricesList();
@@ -735,7 +927,7 @@ namespace InvoiceCreator
                 string[] ownerData = System.IO.File.ReadAllLines(path);
 
                 PdfLine line = new PdfLine(borderPen, new PointF(0, 0), new PointF(pageWidth, 0));
-                layoutResult = line.Draw(page, new PointF(0, pageHeight - 110));
+                layoutResult = line.Draw(page, new PointF(0, pageHeight - 122));
 
                 FileStream imageFileStream = new FileStream(currentDirectory + @"\logo.jpg", FileMode.Open);
                 PdfBitmap image = new PdfBitmap(imageFileStream);
@@ -746,12 +938,13 @@ namespace InvoiceCreator
                 textElement.Text = ownerData[1] + "\n" +
                     ownerData[2] + "\n" +
                     ownerData[3] + "\n" +
-                    ownerData[4];
+                    ownerData[4] + "\n" +
+                    ownerData[5];
                 layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
-                textElement.Text = "Pytania? Email: " + ownerData[5] + "\nTel: " + ownerData[6] + "; " + ownerData[7];
+                textElement.Text = ownerData[6] + "\n" + ownerData[7];
                 layoutResult = textElement.Draw(page, new PointF(margin, layoutResult.Bounds.Bottom + lineSpace));
 
-                graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 39, layoutResult.Bounds.Bottom - 92));
+                graphics.DrawImage(image, new PointF(layoutResult.Bounds.Right + 63, layoutResult.Bounds.Bottom - 96));
 
                 path = System.IO.Path.Combine(currentDirectory, "NumerFaktury.txt");
                 var invoiceNumber = System.IO.File.ReadAllLines(path)[0];
@@ -770,9 +963,9 @@ namespace InvoiceCreator
 
                 MessageBox.Show("Faktura wygenerowana");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                MessageBox.Show("Błędne dane/Brak danych.");
+                MessageBox.Show("Błędne dane/Brak danych.\n" + ex.Message);
             }
         }
     }
